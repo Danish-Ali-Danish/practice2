@@ -13,6 +13,7 @@ use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SubcategoryController;
 use Illuminate\Support\Facades\Route;
 
 // Feature Routes
@@ -43,12 +44,21 @@ Route::prefix('admin')->middleware(['web'])->group(function () {
  * | Web Routes
  * |--------------------------------------------------------------------------
  */
+Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
+Route::get('/search/categories', [SearchController::class, 'categories'])->name('search.categories');
 
-Route::get('/search/suggestions', [SearchController::class, 'suggest'])->name('search.suggestions');
+// Add these ID-based routes if not already added
+Route::get('/category/{id}', [CategoryController::class, 'show']);
+Route::get('/subcategory/{id}', [SubcategoryController::class, 'show']);
+Route::get('/brand/{id}', [BrandController::class, 'show']);
+
+Route::get('/product/{id}', [ProductController::class, 'show']);
+
 // 🔎 Used in HomeSearchController
 // =====================
 
 Route::get('/category/{slug}', [FrontendController::class, 'productsByCategory'])->name('category.products');
+
 Route::get('/brand/{slug}', [FrontendController::class, 'productsByBrand'])->name('brand.products');
 
 // =========================
@@ -75,11 +85,18 @@ Route::middleware(['auth'])->group(function () {
 
     // =====================
     // 🛠️ Admin Routes
-    // =====================
-    Route::resource('brands', BrandController::class);
-    Route::post('/brands/save-popular', [BrandController::class, 'savePopular'])->name('brands.savePopular');
+    // =====================use App\Http\Controllers\BrandController;
 
+    // routes/web.php (admin section)
+
+    Route::prefix('admin')->group(function () {
+        Route::resource('brands', BrandController::class)->except(['show']);
+        Route::get('brands/list', [BrandController::class, 'list'])->name('brands.list');
+        Route::post('brands/{brand}/toggle-popular', [BrandController::class, 'togglePopular'])->name('brands.toggle-popular');
+        Route::post('brands/bulk-actions', [BrandController::class, 'bulkActions'])->name('brands.bulk-actions');
+    });
     Route::resource('categories', CategoryController::class);
+    Route::resource('subcategories', SubcategoryController::class);
     Route::resource('products', ProductController::class);
     Route::post('products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulkDelete');
     // Featured Products Logic

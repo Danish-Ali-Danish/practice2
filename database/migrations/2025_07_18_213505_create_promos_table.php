@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('promos', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
+            $table->string('title')->nullable()->change();
             $table->text('description')->nullable();
             $table->string('image')->nullable();
             $table->string('button_text')->nullable();

@@ -1,5 +1,5 @@
 <div class="col-6 col-md-4 col-lg-2"> <!-- Now shows 6 cards in a row on desktop -->
-    <div class="card text-center shadow-sm border-0 h-100 product-card" style="width: 160px; margin: auto;">
+    <div class="product-card text-center shadow-sm border-0 h-100 product-card" style="width: 160px; margin: auto;">
         <img src="{{ $product->image ? asset('storage/' . $product->image) : asset('images/no-image.png') }}"
              class="card-img-top"
              style="height: 100px; object-fit: contain; background: #f9f9f9;"

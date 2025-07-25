@@ -1,7 +1,7 @@
 
 
 @if($testimonials->count())
-<section class="py-5 bg-light">
+<section class="py-5 ">
     <div class="container">
         <h2 class="text-center mb-5 fw-bold">What Our Customers Say</h2>
         <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
@@ -10,7 +10,7 @@
                     <div class="carousel-item @if($index == 0) active @endif">
                         <div class="row justify-content-center">
                             <div class="col-md-8">
-                                <div class="card shadow-lg border-0">
+                                <div class="testimonial-swiper card shadow-lg border-0">
                                     <div class="card-body text-center">
                                         <img src="{{ asset('storage/' . $testimonial->photo) }}"
                                             class="rounded-circle mb-4" width="100" height="100"

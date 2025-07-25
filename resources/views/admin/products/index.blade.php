@@ -218,7 +218,7 @@ $(document).ready(function () {
         $.get(`/products/${id}`, function (product) {
             $('#productId').val(product.id);
             $('#productName').val(product.name);
-            $('#productCategory').val(product.category_id);
+            $('#productCategory').val(product.subcategories_id);
             $('#productBrand').val(product.brand_id);
             $('#productPrice').val(product.price);
             $('#productComparePrice').val(product.compare_price);

@@ -10,22 +10,23 @@
         <!-- Swiper Container -->
         <div class="swiper brand-swiper">
             <div class="swiper-wrapper">
-                @foreach ($brands as $brand)
-                    <div class="swiper-slide">
-                        <div class="card text-center shadow-sm border-0 mx-2" style="width: 160px;">
-                            <img src="{{ $brand->file_path ? asset('storage/' . $brand->file_path) : asset('images/default-brand.png') }}"
-                                 class="card-img-top img-fluid previewable-image"
-                                 style="height: 100px; object-fit: cover;"
-                                 alt="{{ $brand->name }}"
-                                 loading="lazy">
-                            <div class="card-body p-2">
-                                <h6 class="card-title mb-1">{{ $brand->name }}</h6>
-                                <a href="{{ route('allproducts', ['brand' => $brand->id]) }}"
-                                   class="btn btn-outline-primary btn-sm w-100">Explore</a>
-                            </div>
+            @foreach ($brands as $brand)
+                <div class="swiper-slide">
+                    <div class="brand-card text-center shadow-sm border-0 mx-2" style="width: 160px;">
+                        <img src="{{  asset('storage/' . $brand->image)  }}"
+                            class="card-img-top img-fluid previewable-image"
+                            style="height: 100px; object-fit: cover;"
+                            alt="{{ $brand->name }}"
+                            loading="lazy">
+                        <div class="card-body p-2">
+                            <h6 class="card-title mb-1">{{ $brand->name }}</h6>
+                            <small class="text-muted">{{ $brand->subcategory->name ?? 'N/A' }}</small>
+                            <a href="{{ route('allproducts', ['brand' => $brand->id]) }}"
+                            class="btn btn-outline-primary btn-sm w-100 mt-1">Explore</a>
                         </div>
                     </div>
-                @endforeach
+                </div>
+            @endforeach
             </div>
 
             <!-- Navigation Arrows -->

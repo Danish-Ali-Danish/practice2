@@ -29,4 +29,21 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    // In Category.php
+
+    public function parent()
+    {
+        return $this->belongsTo(Category::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Category::class, 'parent_id');
+    }
+
+    public function subcategories()
+    {
+        return $this->hasMany(Subcategory::class);
+    }
 }

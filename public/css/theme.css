@@ -17,7 +17,7 @@
 /* Optional: your custom CSS */
 #search-results {
     max-height: 300px;
-    overflow-y: auto;
+    
     z-index: 1000;
 }
 #search-results .item {
@@ -31,6 +31,7 @@
 /* Theme Bindings */
 [data-theme="light"] {
     --bg-color: var(--light-bg);
+    
     --text-color: var(--light-text);
     --border-color: var(--light-border);
 }
@@ -79,7 +80,7 @@ body {
     background: linear-gradient(135deg, #0d6efd, #20c997);
     color: #fff;
     position: relative;
-    overflow: hidden;
+
     padding: 5rem 0;
 }
 .hero-shapes .shape-1,
@@ -328,7 +329,7 @@ body {
     background: linear-gradient(135deg, #0d6efd, #20c997);
     color: #fff;
     position: relative;
-    overflow: hidden;
+
     padding: 5rem 0;
 }
 .hero-section .btn {
@@ -406,4 +407,53 @@ body {
     background-color: #f0f0f0;
 }
     
-    
+.dark-mode {
+    background-color: #111 !important;
+    color: #fff !important;
+}
+
+.dark-mode .hero-section {
+    background: radial-gradient(#222, #000);
+}
+
+.dark-mode .category-card,
+.dark-mode .brand-card,
+.dark-mode .product-card,
+.dark-mode .blog-card,
+.dark-mode .promo-card,
+.dark-mode .testimonial-swiper .card,
+.dark-mode footer,
+.dark-mode .newsletter-section,
+.dark-mode .search-box,
+.dark-mode #search-results {
+    background-color: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #333 !important;
+}
+
+.dark-mode .card-title,
+.dark-mode .card-body p {
+    color: #ccc !important;
+}
+
+.dark-mode .btn-outline-light {
+    color: #fff;
+    border-color: #fff;
+}
+
+.dark-mode .btn-primary {
+    background-color: #ff6b6b;
+}
+
+.dark-mode .btn-primary:hover {
+    background-color: #ff5252;
+}
+
+.dark-mode .promo-btn {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 1px solid white;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+

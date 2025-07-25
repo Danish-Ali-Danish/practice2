@@ -1,48 +1,58 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class SearchController extends Controller
 {
-    public function suggest(Request $request)
+    public function categories()
     {
-        $query = $request->query('q');
+        return response()->json(Category::select('name', 'slug')->get());
+    }
 
-        if (!$query || strlen($query) < 2) {
-            return response()->json([]);
-        }
+    public function suggestions(Request $request)
+    {
+        $query = $request->q;
+        $cat = $request->category ?? 'all';
 
+        $categories = Category::where('name', 'LIKE', "$query%")->limit(3)->get();
+        $brands = Brand::where('name', 'LIKE', "$query%")->limit(3)->get();
         $results = [];
 
-        $products = Product::where('name', 'LIKE', "%$query%")->limit(5)->get();
-        $categories = Category::where('name', 'LIKE', "%$query%")->limit(3)->get();
-        $brands = Brand::where('name', 'LIKE', "%$query%")->limit(3)->get();
+        $products = Product::where('name', 'LIKE', "$query%")
+            ->orWhere('name', 'LIKE', "% $query%")
+            ->orWhere('short_description', 'LIKE', "%$query%")
+            ->limit(5)
+            ->get();
 
         foreach ($products as $product) {
             $results[] = [
                 'name' => $product->name,
-                'url' => url('/product/' . $product->slug),  // or use route() if you have one
+                'description' => \Str::limit($product->short_description, 50),
+                'image' => asset('uploads/products/' . $product->image),
+                'url' => url('/product/' . $product->id),
                 'type' => 'Product',
             ];
         }
 
-        foreach ($categories as $category) {
+        foreach ($categories as $item) {
             $results[] = [
-                'name' => $category->name,
-                'url' => url('/category/' . $category->slug),
-                'type' => 'Category',
+                'name' => $item->name,
+                'url' => url('/cate/' . $item->slug),
+                'type' => 'Category'
             ];
         }
 
-        foreach ($brands as $brand) {
+        foreach ($brands as $item) {
             $results[] = [
-                'name' => $brand->name,
-                'url' => url('/brand/' . $brand->slug),
-                'type' => 'Brand',
+                'name' => $item->name,
+                'url' => url('/all-brands/' . $item->slug),
+                'type' => 'Brand'
             ];
         }
 

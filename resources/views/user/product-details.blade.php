@@ -143,7 +143,7 @@
                             <div>
                                 <h6>{{ $p->name }}</h6>
                                 <p class="mb-1 text-primary">PKR {{ number_format($p->price) }}</p>
-                                <a href="{{ url('/product/' . $p->slug) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                <a href="{{ url('/product/' . $p->id) }}" class="btn btn-sm btn-outline-primary">View</a>
                             </div>
                         </div>
                         @endforeach

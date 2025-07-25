@@ -15,6 +15,12 @@
                     <i class="bi bi-folder me-2"></i>Categories
                 </a>
             </li>
+            <li class="{{ request()->routeIs('subcategories.index') ? 'active' : '' }}">
+                <a href="{{ route('subcategories.index') }}">
+                    <i class="bi bi-folder me-2"></i>SubCategories
+                </a>
+            </li>
+
 
             <!-- Brand Management -->
             <li class="{{ request()->routeIs('brands.index') ? 'active' : '' }}">

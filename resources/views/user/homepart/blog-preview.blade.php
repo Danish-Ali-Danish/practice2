@@ -1,13 +1,13 @@
 
 <!-- Blog Preview -->
 @if($blogPosts->count())
-<section class="py-5 bg-white border-top">
+<section class="py-5  border-top">
     <div class="container">
         <h2 class="text-center fw-bold mb-5">Latest Blog Posts</h2>
         <div class="row g-4">
             @foreach($blogPosts as $post)
                 <div class="col-md-4">
-                    <div class="card h-100 shadow-sm border-0">
+                    <div class="blog-card h-100 shadow-sm border-0">
                         @if($post->image)
                             <img src="{{ asset('storage/' . $post->image) }}" class="card-img-top " alt="{{ $post->title }} "
                                 style="height: 200px; object-fit: cover;" loading="lazy">

@@ -3,143 +3,197 @@
 namespace App\Http\Controllers;
 
 use App\Models\Brand;
-use App\Models\Category;
+use App\Models\Subcategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Yajra\DataTables\DataTables;
+use Yajra\DataTables\Facades\DataTables;
 
 class BrandController extends Controller
 {
-    public function index(Request $request)
+    public function index()
+    {
+        $subcategories = Subcategory::all();
+        return view('admin.brands.index', compact('subcategories'));
+    }
+
+    public function list(Request $request)
     {
         if ($request->ajax()) {
-            $data = Brand::with('category')->latest()->get();
+            try {
+                $brands = Brand::with('subcategory')->select('brands.*');
 
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('category.name', function ($row) {
-                    return $row->category->name ?? '—';
-                })
-                ->addColumn('file_path', function ($row) {
-                    if ($row->file_path) {
-                        $url = asset('storage/' . $row->file_path);
-                        return '<img src="' . $url . '" width="50" height="50" style="object-fit:cover;cursor:pointer" class="file-preview" data-src="' . $url . '">';
-                    } else {
-                        return 'No File';
-                    }
-                })
-                ->addColumn('action', function ($row): string {
-                    return '
-                        <button class="btn btn-sm btn-info edit-btn" data-id="' . $row->id . '">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-btn" data-id="' . $row->id . '">
-                            <i class="fas fa-trash-alt"></i> Delete
-                        </button>
-                    ';
-                })
-                ->rawColumns(['file_path', 'action', 'category.name'])
-                ->make(true);
+                return DataTables::of($brands)
+                    ->addIndexColumn()
+                    ->addColumn('checkbox', function ($brand) {
+                        return '<input type="checkbox" class="brand-checkbox" value="' . $brand->id . '">';
+                    })
+                    ->addColumn('image', function ($brand) {
+                        return $brand->image
+                            ? '<img src="' . asset('storage/' . $brand->image) . '" width="50" height="50" style="object-fit:cover;">'
+                            : 'No Image';
+                    })
+                    ->addColumn('subcategory', function ($brand) {
+                        return $brand->subcategory ? $brand->subcategory->name : '-';
+                    })
+                    ->addColumn('is_popular', function ($brand) {
+                        return '<input type="checkbox" class="popular-checkbox" data-id="' . $brand->id . '" ' . ($brand->is_popular ? 'checked' : '') . '>';
+                    })
+                    ->addColumn('actions', function ($brand) {
+                        return '<button class="btn btn-sm btn-primary edit-btn" data-id="' . $brand->id . '">Edit</button>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="' . $brand->id . '">Delete</button>';
+                    })
+                    ->rawColumns(['checkbox', 'image', 'is_popular', 'actions'])
+                    ->make(true);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'error' => 'Failed to load data: ' . $e->getMessage()
+                ], 500);
+            }
         }
 
-        $categories = Category::all();
-        return view('admin.brands.index', compact('categories'));
+        return response()->json(['error' => 'Invalid request'], 400);
     }
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:brands,name',
-            'category_id' => 'required|exists:categories,id',
-            'file' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        $request->merge([
+            'is_popular' => $request->has('is_popular')
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $filePath = null;
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:brands,name',
+            'subcategory_id' => 'required|exists:subcategories,id',
+            'file' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'is_popular' => 'boolean'
+        ]);
 
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('uploads/brands', 'public');
+            $validated['image'] = $request->file('file')->store('brands', 'public');
         }
 
-        $brand = Brand::create([
-            'name' => $request->name,
-            'category_id' => $request->category_id,
-            'file_path' => $filePath,
+        Brand::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Brand created successfully'
         ]);
-
-        return response()->json(['message' => 'Brand added successfully!', 'brand' => $brand]);
-    }
-
-    public function show($id)
-    {
-        $brand = Brand::with('category')->findOrFail($id);
-        return response()->json($brand);
     }
 
     public function update(Request $request, Brand $brand)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:brands,name,' . $brand->id,
-            'category_id' => 'required|exists:categories,id',
-            'file' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        $request->merge([
+            'is_popular' => $request->has('is_popular')
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:brands,name,' . $brand->id,
+            'subcategory_id' => 'required|exists:subcategories,id',
+            'file' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'is_popular' => 'boolean'
+        ]);
 
         if ($request->hasFile('file')) {
-            if ($brand->file_path && Storage::disk('public')->exists($brand->file_path)) {
-                Storage::disk('public')->delete($brand->file_path);
+            if ($brand->image) {
+                Storage::disk('public')->delete($brand->image);
             }
-
-            $brand->file_path = $request->file('file')->store('uploads/brands', 'public');
+            $validated['image'] = $request->file('file')->store('brands', 'public');
         }
 
-        $brand->name = $request->name;
-        $brand->category_id = $request->category_id;
-        $brand->save();
+        $brand->update($validated);
 
-        return response()->json(['message' => 'Brand updated successfully!', 'brand' => $brand]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Brand updated successfully'
+        ]);
+    }
+
+    public function edit(Brand $brand)
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $brand
+        ]);
     }
 
     public function destroy(Brand $brand)
     {
         try {
-            if ($brand->file_path && Storage::disk('public')->exists($brand->file_path)) {
-                Storage::disk('public')->delete($brand->file_path);
+            if ($brand->image) {
+                Storage::disk('public')->delete($brand->image);
             }
 
             $brand->delete();
-            return response()->json(['message' => 'Brand deleted successfully!']);
-        } catch (\Illuminate\Database\QueryException $e) {
+
             return response()->json([
-                'message' => 'Cannot delete brand. It is associated with other records.'
-            ], 409);
+                'success' => true,
+                'message' => 'Brand deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting brand: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    public function savePopular(Request $request)
+    public function togglePopular(Brand $brand)
     {
-        // Validate input
-        $brandIds = $request->input('brand_ids', []);
+        try {
+            $brand->update(['is_popular' => !$brand->is_popular]);
 
-        if (!is_array($brandIds)) {
-            return response()->json(['message' => 'Invalid data format.'], 422);
+            return response()->json([
+                'success' => true,
+                'is_popular' => $brand->fresh()->is_popular,
+                'message' => 'Popular status updated'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating popular status: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        // Reset all to false
-        Brand::query()->update(['is_popular' => false]);
+    public function bulkActions(Request $request)
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:delete,make_popular,remove_popular',
+            'ids' => 'required|array',
+            'ids.*' => 'exists:brands,id'
+        ]);
 
-        // Set selected to true
-        if (count($brandIds) > 0) {
-            Brand::whereIn('id', $brandIds)->update(['is_popular' => true]);
+        try {
+            switch ($validated['action']) {
+                case 'delete':
+                    $brandsWithImages = Brand::whereIn('id', $validated['ids'])
+                        ->whereNotNull('image')
+                        ->get();
+
+                    foreach ($brandsWithImages as $brand) {
+                        Storage::disk('public')->delete($brand->image);
+                    }
+
+                    Brand::whereIn('id', $validated['ids'])->delete();
+                    break;
+
+                case 'make_popular':
+                    Brand::whereIn('id', $validated['ids'])->update(['is_popular' => true]);
+                    break;
+
+                case 'remove_popular':
+                    Brand::whereIn('id', $validated['ids'])->update(['is_popular' => false]);
+                    break;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bulk action completed successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error performing bulk action: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['message' => 'Popular brands updated.']);
     }
 }

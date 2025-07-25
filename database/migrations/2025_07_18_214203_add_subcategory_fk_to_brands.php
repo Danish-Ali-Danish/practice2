@@ -8,10 +8,14 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
         Schema::table('brands', function (Blueprint $table) {
-            $table->boolean('is_popular')->default(false);
+            $table
+                ->foreign('subcategory_id')
+                ->references('id')
+                ->on('subcategories')
+                ->onDelete('cascade');
         });
     }
 

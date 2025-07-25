@@ -9,8 +9,8 @@
         @forelse ($brands as $brand)
             <div class="col-6 col-md-4 col-lg-3 mb-4">
                 <div class="card h-100 text-center shadow-sm">
-                    @if ($brand->file_path)
-                        <img src="{{ asset('storage/' . $brand->file_path) }}" 
+                    @if ($brand->image)
+                        <img src="{{ asset('storage/' . $brand->image) }}" 
                              class="card-img-top"
                              style="height: 150px; object-fit: cover; cursor: pointer;"
                              alt="{{ $brand->name }}"

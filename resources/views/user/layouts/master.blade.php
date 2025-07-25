@@ -15,7 +15,7 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
-    <style>
+    <!-- <style>
         #searchResults {
             position: absolute;
             top: 100%;
@@ -47,10 +47,10 @@
             height: 40px;
             object-fit: cover;
             border-radius: 4px;
-        }
+        } -->
     </style>
 </head>
-<body>
+<body  class="{{ session('dark_mode', false) ? 'dark-mode' : '' }}">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light px-4 position-relative">
         <a class="navbar-brand fw-bold text-primary" href="{{ url('/home') }}">ShopNow</a>
@@ -80,9 +80,12 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url('/orders') }}">Orders</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url('/wishlist') }}"><i class="fas fa-heart text-danger me-1"></i>Wishlist</a></li>
                 <li class="nav-item">
-                    <button class="btn btn-sm btn-outline-secondary theme-toggle" id="toggleTheme" aria-label="Toggle theme">
-                        <i class="fas fa-adjust me-1"></i> Toggle
-                    </button>
+                    <!-- Toggle Dark Mode Switch -->
+                    <div class="form-check form-switch text-light">
+                        <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                        <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
+                    </div>
+
                 </li>
             </ul>
         </div>
@@ -105,38 +108,25 @@
 
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const themeToggle = document.getElementById('toggleTheme');
-        const htmlEl = document.documentElement;
-        const icon = themeToggle.querySelector('i');
+$(document).ready(function () {
+    // Load saved mode
+    if (localStorage.getItem('dark-mode') === 'enabled') {
+        $('body').addClass('dark-mode');
+        $('#darkModeToggle').prop('checked', true);
+    }
 
-        function setTheme(theme) {
-            htmlEl.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            icon.classList.replace('fa-sun', 'fa-moon');
-            if (theme === 'dark') {
-                icon.classList.replace('fa-moon', 'fa-sun');
-            }
+    $('#darkModeToggle').on('change', function () {
+        if ($(this).is(':checked')) {
+            $('body').addClass('dark-mode');
+            localStorage.setItem('dark-mode', 'enabled');
+        } else {
+            $('body').removeClass('dark-mode');
+            localStorage.setItem('dark-mode', 'disabled');
         }
-
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        setTheme(savedTheme);
-
-        themeToggle.addEventListener('click', function () {
-            const currentTheme = htmlEl.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            setTheme(newTheme);
-        });
     });
+});
     </script>
-    <script>
-    $(document).on('click', '.previewable-image', function () {
-        let src = $(this).attr('src');
-        $('#previewImage').attr('src', src);
-        $('#imagePreviewModal').modal('show');
-    });
-</script>
-
+    
     @stack('scripts')
 
     <script>

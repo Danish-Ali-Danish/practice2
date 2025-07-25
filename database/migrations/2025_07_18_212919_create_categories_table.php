@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -8,10 +9,13 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
-        Schema::table('promos', function (Blueprint $table) {
-            $table->string('title')->nullable()->change();
+        Schema::create('categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique();  // Category name
+            $table->string('file_path')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -20,8 +24,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('promos', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('categories');
     }
 };

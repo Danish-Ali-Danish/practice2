@@ -12,12 +12,14 @@
             <div class="swiper-wrapper">
                 @foreach ($categories as $category)
                     <div class="swiper-slide">
-                        <div class="card text-center shadow-sm border-0 mx-2" style="width: 160px;">
-                            <img src="{{ $category->file_path ? asset('storage/' . $category->file_path) : asset('images/default-category.png') }}"
-                                 class="card-img-top img-fluid previewable-image rounded"
-                                 style="height: 100px; object-fit: cover;"
-                                 alt="{{ $category->name }}"
-                                 loading="lazy">
+                        <div class="category-card text-center shadow-sm border-0 mx-2" style="width: 160px;">
+                        <img src="{{ $category->file_path ? asset('storage/' . $category->file_path) : asset('images/default-category.png') }}"
+                        class="card-img-top img-fluid previewable-image rounded"
+                        style="height: 100px; object-fit: cover;"
+                        alt="{{ $category->name }}"
+                        data-image="{{ $category->file_path ? asset('storage/' . $category->file_path) : asset('images/default-category.png') }}"
+                        loading="lazy">
+
                             <div class="card-body p-2">
                                 <h6 class="card-title mb-1">{{ $category->name }}</h6>
                                 <a href="{{ route('allproducts', ['category' => $category->id]) }}"
@@ -40,6 +42,7 @@
         </div>
     </div>
 </section>
+
 
 <!-- Category Preview Modal -->
 <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">

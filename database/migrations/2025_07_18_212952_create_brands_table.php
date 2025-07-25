@@ -1,7 +1,5 @@
 <?php
 
-// database/migrations/YYYY_MM_DD_create_brands_table.php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,13 +8,15 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    // database/migrations/xxxx_xx_xx_create_brands_table.php
     public function up()
     {
         Schema::create('brands', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->foreignId('category_id')->constrained()->onDelete('restrict');
+            $table->unsignedBigInteger('subcategory_id');  // <-- ADD THIS
+            // $table->foreign('subcategory_id')->references('id')->on('subcategories')->onDelete('cascade');
+            $table->string('image')->nullable();
+            $table->boolean('is_popular')->default(false);
             $table->timestamps();
         });
     }
