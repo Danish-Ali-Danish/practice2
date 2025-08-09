@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Subcategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -20,9 +21,11 @@ class CategoryController extends Controller
                     if ($row->file_path) {
                         $url = asset('storage/' . $row->file_path);
                         return '<img src="' . $url . '" width="50" height="50" style="object-fit:cover;cursor:pointer" class="file-preview" data-src="' . $url . '">';
-                    } else {
-                        return 'No File';
                     }
+                    return 'No File';
+                })
+                ->addColumn('subcategories_count', function ($row) {
+                    return $row->subcategories()->count();
                 })
                 ->addColumn('action', function ($row) {
                     return '
@@ -48,23 +51,33 @@ class CategoryController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $filePath = null;
-
-        if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('uploads/categories', 'public');
-        }
+        $filePath = $request->hasFile('file')
+            ? $request->file('file')->store('uploads/categories', 'public')
+            : null;
 
         $category = Category::create([
             'name' => $request->name,
-            'file_path' => $filePath
+            'file_path' => $filePath,
+            'slug' => \Str::slug($request->name)
         ]);
 
-        return response()->json(['message' => 'Category added successfully!', 'category' => $category]);
+        return response()->json([
+            'message' => 'Category added successfully!',
+            'category' => $category
+        ]);
     }
 
-    public function show(Category $category)
+    public function show($id)
     {
-        return response()->json($category);
+        $category = Category::with('subcategories')->findOrFail($id);
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'category' => $category,
+                'subcategories' => $category->subcategories
+            ]);
+        }
+        return view('admin.categories.index', compact('category'));
     }
 
     public function update(Request $request, Category $category)
@@ -82,14 +95,17 @@ class CategoryController extends Controller
             if ($category->file_path && Storage::disk('public')->exists($category->file_path)) {
                 Storage::disk('public')->delete($category->file_path);
             }
-
             $category->file_path = $request->file('file')->store('uploads/categories', 'public');
         }
 
         $category->name = $request->name;
+        $category->slug = \Str::slug($request->name);
         $category->save();
 
-        return response()->json(['message' => 'Category updated successfully!', 'category' => $category]);
+        return response()->json([
+            'message' => 'Category updated successfully!',
+            'category' => $category
+        ]);
     }
 
     public function destroy(Category $category)
@@ -106,5 +122,14 @@ class CategoryController extends Controller
                 'message' => 'Cannot delete category. It is associated with other records.'
             ], 409);
         }
+    }
+
+    public function getCategoriesForFrontend()
+    {
+        $categories = Category::with(['subcategories' => function ($query) {
+            $query->withCount('products');
+        }])->get();
+
+        return response()->json($categories);
     }
 }

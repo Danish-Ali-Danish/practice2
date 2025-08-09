@@ -12,16 +12,14 @@ class CreateProductsTable extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->foreignId('subcategory_id')->constrained()->onDelete('cascade');
             $table->foreignId('brand_id')->constrained()->onDelete('cascade');
+            $table->foreignId('subcategory_id')->constrained()->onDelete('cascade');
             $table->decimal('price', 10, 2);
-            $table->boolean('is_featured')->default(false);
 
-            $table->decimal('compare_price', 10, 2)->nullable();  // NEW
-            $table->integer('stock')->nullable();  // NEW
-            $table->text('short_description')->nullable();  // NEW
-            $table->longText('description')->nullable();  // NEW
-            $table->string('image')->nullable();
+            $table->string('main_image')->nullable();
+            $table->text('description')->nullable();
+            $table->boolean('is_featured')->default(false);
+            // $table->boolean('is_trending')->default(false);
             $table->timestamps();
         });
     }

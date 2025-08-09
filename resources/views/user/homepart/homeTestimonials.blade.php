@@ -12,8 +12,8 @@
                             <div class="col-md-8">
                                 <div class="testimonial-swiper card shadow-lg border-0">
                                     <div class="card-body text-center">
-                                        <img src="{{ asset('storage/' . $testimonial->photo) }}"
-                                            class="rounded-circle mb-4" width="100" height="100"
+                                        <img src="{{ asset('storage/' . $testimonial->image) }}"
+                                            class="rounded-circle mb-4 img-preview" width="100" height="100"
                                             style="object-fit: cover;" alt="Customer photo">
                                         <p class="fs-5 fst-italic">"{{ $testimonial->message }}"</p>
                                         <h5 class="fw-bold mt-3">{{ $testimonial->name }}</h5>
@@ -37,4 +37,49 @@
         </div>
     </div>
 </section>
+
 @endif
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark">
+      <div class="modal-body p-0 text-center">
+        <img id="previewModalImg" src="" alt="Preview" class="img-fluid rounded" />
+      </div>
+    </div>
+  </div>
+</div>
+@push(section: 'scripts')
+<script>
+    $(document).on('click', '.img-preview', function () {
+        const imgSrc = $(this).attr('src');
+        $('#previewModalImg').attr('src', imgSrc);
+        $('#imagePreviewModal').modal('show');
+    });
+</script>
+@endpush
+
+@push('scripts')
+<script>
+const testimonialSwiper = new Swiper('.testimonial-swiper', {
+    slidesPerView: 1,
+    spaceBetween: 20,
+    loop: true,
+    autoplay: {
+        delay: 5000,
+        disableOnInteraction: false,
+    },
+    navigation: {
+        nextEl: '.testimonial-next',
+        prevEl: '.testimonial-prev',
+    },
+    breakpoints: {
+        768: { slidesPerView: 1 },
+        992: { slidesPerView: 2 },
+    },
+});
+
+
+</script>
+@endpush

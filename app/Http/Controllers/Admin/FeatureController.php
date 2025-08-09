@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -25,53 +26,86 @@ class FeatureController extends Controller
         return view('admin.features.index');
     }
 
-    public function create()
-    {
-        return view('admin.features.create');
-    }
-
+    /**
+     * Store a newly created feature (AJAX)
+     */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'icon' => 'required|string|max:255',
             'title' => 'required|string|max:255',
             'description' => 'required|string'
         ]);
 
-        Feature::create($request->all());
-        return redirect()->route('features.index')->with('success', 'Feature created successfully.');
+        $feature = Feature::create($validated);
+
+        return response()->json([
+            'message' => 'Feature added successfully!',
+            'data' => $feature
+        ]);
     }
 
-    public function edit(Feature $feature)
+    /**
+     * Return single feature data for edit modal (AJAX)
+     */
+    public function show($id)
     {
-        return view('admin.features.edit', compact('feature'));
+        $feature = Feature::find($id);
+
+        if (!$feature) {
+            return response()->json(['error' => 'Feature not found'], 404);
+        }
+
+        return response()->json($feature);
     }
 
-    public function update(Request $request, Feature $feature)
+    /**
+     * Update the specified feature (AJAX)
+     */
+    public function update(Request $request, $id)
     {
-        $request->validate([
+        $feature = Feature::findOrFail($id);
+
+        $validated = $request->validate([
             'icon' => 'required|string|max:255',
             'title' => 'required|string|max:255',
             'description' => 'required|string'
         ]);
 
-        $feature->update($request->all());
-        return redirect()->route('features.index')->with('success', 'Feature updated.');
+        $feature->update($validated);
+
+        return response()->json([
+            'message' => 'Feature updated successfully!',
+            'data' => $feature
+        ]);
     }
 
-    public function destroy(Feature $feature)
+    /**
+     * Delete a feature (AJAX)
+     */
+    public function destroy($id)
     {
+        $feature = Feature::find($id);
+
+        if (!$feature) {
+            return response()->json(['error' => 'Feature not found'], 404);
+        }
+
         $feature->delete();
-        return back()->with('success', 'Feature deleted.');
+
+        return response()->json(['message' => 'Feature deleted successfully!']);
     }
 
+    /**
+     * Bulk delete features (AJAX)
+     */
     public function bulkDelete(Request $request)
     {
-        $ids = $request->input('ids');  // expects an array of IDs
+        $ids = $request->input('ids');
 
-        if (is_array($ids)) {
+        if (is_array($ids) && count($ids) > 0) {
             Feature::whereIn('id', $ids)->delete();
-            return response()->json(['message' => 'Selected features deleted successfully.']);
+            return response()->json(['message' => 'Selected features deleted successfully!']);
         }
 
         return response()->json(['message' => 'No features selected.'], 400);

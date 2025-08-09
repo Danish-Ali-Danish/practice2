@@ -1,12 +1,10 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Promo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use DataTables;
 
 class PromoController extends Controller
 {
@@ -18,25 +16,20 @@ class PromoController extends Controller
             return datatables()
                 ->of($data)
                 ->addIndexColumn()
-                ->addColumn('checkbox', function ($row) {
-                    return '<input type="checkbox" class="selectPromo" value="' . $row->id . '">';
-                })
-                ->editColumn('image', function ($row) {
-                    return $row->image
+                ->addColumn('checkbox', fn($row) =>
+                    '<input type="checkbox" class="selectPromo" value="' . $row->id . '">')
+                ->editColumn('image', fn($row) =>
+                    $row->image
                         ? '<img src="' . asset('storage/' . $row->image) . '" width="50" class="img-thumbnail">'
-                        : 'No Image';
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                        <button class="btn btn-sm btn-info edit-btn" data-id="' . $row->id . '">Edit</button>
-                        <button class="btn btn-sm btn-danger delete-btn" data-id="' . $row->id . '">Delete</button>
-                    ';
-                })
+                        : 'No Image')
+                ->addColumn('action', fn($row) => '
+                    <button class="btn btn-sm btn-info edit-btn" data-id="' . $row->id . '">Edit</button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="' . $row->id . '">Delete</button>
+                ')
                 ->rawColumns(['checkbox', 'image', 'action'])
                 ->make(true);
         }
 
-        // ✅ This line must be outside the `if`
         return view('admin.promos.index');
     }
 
@@ -54,7 +47,6 @@ class PromoController extends Controller
         }
 
         Promo::create($data);
-
         return response()->json(['message' => 'Promo created successfully']);
     }
 
@@ -80,7 +72,6 @@ class PromoController extends Controller
         }
 
         $promo->update($data);
-
         return response()->json(['message' => 'Promo updated successfully']);
     }
 
@@ -91,7 +82,6 @@ class PromoController extends Controller
         }
 
         $promo->delete();
-
         return response()->json(['message' => 'Promo deleted successfully']);
     }
 
@@ -99,11 +89,6 @@ class PromoController extends Controller
     {
         $ids = $request->input('ids');
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['message' => 'No promos selected.'], 400);
-        }
-
-        // Optional: Delete images if needed
         $promos = Promo::whereIn('id', $ids)->get();
         foreach ($promos as $promo) {
             if ($promo->image) {
@@ -112,7 +97,6 @@ class PromoController extends Controller
         }
 
         Promo::whereIn('id', $ids)->delete();
-
-        return response()->json(['message' => 'Selected promos deleted successfully.']);
+        return response()->json(['message' => 'Selected promos deleted.']);
     }
 }

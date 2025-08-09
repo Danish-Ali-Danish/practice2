@@ -1,9 +1,8 @@
 @extends('admin.layout.app')
 
 @section('content')
-
-<div class="container dashboard-card">
-    <h2>Product List</h2>
+<div class="container-fluid dashboard-card">
+    <h4 class="mb-4">Product List</h4>
     <div class="d-flex justify-content-end mb-3">
         <button class="btn btn-primary me-2" id="addProductBtn">
             <i class="fas fa-plus-circle me-1"></i> Add Products
@@ -11,271 +10,287 @@
         <a href="{{ route('products.featured') }}" class="btn btn-outline-success me-2">
             <i class="fas fa-star me-1"></i> View Featured Products
         </a>
+
         <button class="btn btn-warning d-none me-2" id="saveFeaturedProducts">
-            <i class="fas fa-save me-1"></i> Save Featured
+            <i class="fas fa-save me-1"></i> Save Featured Status Changes
         </button>
         <button class="btn btn-danger d-none" id="bulkDeleteBtn">
             <i class="fas fa-trash-alt me-1"></i> Delete Selected
         </button>
     </div>
 
-    <div class="table-responsive">
-        <table id="productTable" class="table table-striped table-hover w-100">
-            <thead class="table-dark">
-                <tr>
-                    <th><input type="checkbox" id="selectAllProducts"></th>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Brand</th>
-                    <th>Price</th>
-                    <th>Featured</th>
-                    <th>Image</th>
-                    <th class="text-center">Actions</th>
-                </tr>
-            </thead>
-        </table>
-    </div>
+    <!-- Table -->
+    <table class="table table-bordered" id="productTable">
+        <thead class="table-dark">
+            <tr>
+                <th width="5%"><input type="checkbox" id="selectAll"></th>
+                <th>Name</th>
+                <th>Brand</th>
+                <th>Subcategory</th>
+                <th>Price</th>
+                <th>Compare Price</th>
+                <th>Image</th>
+                <th>Featured</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 </div>
 
+<!-- Modal for Product Form -->
 @include('admin.products.edit')
-@include('admin.products.delete')
 
-<div class="modal fade" id="filePreviewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Image Preview</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <img id="previewImage" src="" class="img-fluid" alt="Product Image">
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
 <script>
 $(document).ready(function () {
     $.ajaxSetup({
-        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
     });
 
-    const productModal = new bootstrap.Modal($('#productModal')[0]);
-    const productForm = $('#productForm');
-    const productIdInput = $('#productId');
-
-    const productTable = $('#productTable').DataTable({
+    // Initialize DataTable
+    let table = $('#productTable').DataTable({
         processing: true,
         serverSide: true,
-        ajax: '{{ route("products.index") }}',
+        autoWidth: false,
+        fixedColumns: true,
+        ajax: {
+            url: '/admin/products/list',
+            type: 'GET',
+        },
         columns: [
-            {
-                data: 'id',
-                orderable: false,
+            { 
+                data: 'id', 
+                name: 'checkbox', 
+                orderable: false, 
                 searchable: false,
-                render: id => `<input type="checkbox" class="product-checkbox" value="${id}">`
+                render: function(data) {
+                    return `<input type="checkbox" class="bulk-check" value="${data}">`;
+                }
             },
-            { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
             { data: 'name', name: 'name' },
-            { data: 'category.name', name: 'category.name' },
-            { data: 'brand.name', name: 'brand.name' },
+            { data: 'brand', name: 'brand' },
+            { data: 'subcategory', name: 'subcategory' },
             { data: 'price', name: 'price' },
+            { data: 'compare_price', name: 'compare_price' },
+            { 
+                data: 'main_image',
+                name: 'main_image',
+                orderable: false, 
+                searchable: false,
+                render: function(data) {
+                    return data ? `<img src="/storage/${data}" width="50">` : 'No Image';
+                }
+            },
             {
                 data: 'is_featured',
-                orderable: false,
-                searchable: false,
-                render: (is_featured, type, row) =>
-                    `<input type="checkbox" class="feature-checkbox" value="${row.id}" ${is_featured ? 'checked' : ''}>`
+                name: 'is_featured',
+                render: function(data, type, row) {
+                    return `<input type="checkbox" class="featured-checkbox" data-id="${row.id}" ${data ? 'checked' : ''}>`;
+                }
             },
-            {
-                data: 'image',
-                orderable: false,
+            { 
+                data: 'id', 
+                name: 'actions', 
+                orderable: false, 
                 searchable: false,
-                render: image => image ?
-                    `<img src="/storage/${image}" class="img-thumbnail file-preview" width="50" height="50" style="object-fit:cover;cursor:pointer" data-src="/storage/${image}">`
-                    : 'No Image'
-            },
-            { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' }
-        ],
-        order: [[1, 'desc']]
-    });
-
-    $(document).on('change', '#selectAllProducts', function () {
-        $('.product-checkbox').prop('checked', this.checked);
-        toggleButtons();
-    });
-
-    $(document).on('change', '.product-checkbox, .feature-checkbox', toggleButtons);
-
-    function toggleButtons() {
-        const selectedCount = $('.product-checkbox:checked').length;
-        const featuredCount = $('.feature-checkbox:checked').length;
-
-        $('#bulkDeleteBtn').toggleClass('d-none', selectedCount === 0);
-        $('#saveFeaturedProducts').toggleClass('d-none', featuredCount === 0);
-    }
-
-    $('#bulkDeleteBtn').on('click', function () {
-        const ids = $('.product-checkbox:checked').map(function () {
-            return $(this).val();
-        }).get();
-
-        if (!ids.length) return;
-
-        Swal.fire({
-            title: 'Are you sure?',
-            text: 'This will delete selected products permanently.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Yes, delete them!'
-        }).then(result => {
-            if (result.isConfirmed) {
-                $.post('{{ route("products.bulkDelete") }}', { ids }, function () {
-                    showAlert('Selected products deleted successfully!');
-                    productTable.ajax.reload();
-                    $('#selectAllProducts').prop('checked', false);
-                    $('#bulkDeleteBtn').addClass('d-none');
-                }).fail(() => showAlert('Failed to delete products.', 'error'));
+                render: function(data, type, row) {
+                    return ` 
+                        <button class="btn btn-sm btn-primary editBtn" data-id="${data}">Edit</button>
+                        <button class="btn btn-sm btn-danger deleteBtn" data-id="${data}">Delete</button>
+                    `;
+                }
             }
-        });
+        ]
     });
 
-    $('#saveFeaturedProducts').on('click', function () {
-        let selectedIds = $('.feature-checkbox:checked').map(function () {
-            return $(this).val();
-        }).get();
+    // Handle changes in featured status
+    $(document).on('change', '.featured-checkbox', function() {
+        $('#saveFeaturedProducts').removeClass('d-none');
+    });
 
-        if (selectedIds.length === 0) {
-            Swal.fire('No selection', 'Please select at least one product.', 'warning');
-            return;
+    // Bulk select checkboxes
+    $('#selectAll').click(function() {
+        $('.bulk-check').prop('checked', this.checked);
+    });
+
+    // Add Product Button
+    $('#addProductBtn').click(function() {
+        resetForm();
+        $('#productModal').modal('show');
+    });
+
+    // Save Product Form
+    $('#productForm').on('submit', function (e) {
+        e.preventDefault();
+
+        let formData = new FormData(this);
+        let productId = $('#productId').val();
+        let url = productId ? '/admin/products/' + productId : '/admin/products';
+        
+        if (productId) {
+            formData.append('_method', 'PUT');
         }
 
-        $.post('{{ route("products.saveFeatured") }}', {
-            _token: '{{ csrf_token() }}',
-            featured_ids: selectedIds
-        }, function (res) {
-            Swal.fire('Success!', res.message, 'success').then(() => {
-                productTable.ajax.reload();
-            });
-        }).fail(() => {
-            Swal.fire('Error', 'Failed to update featured products.', 'error');
-        });
-    });
-
-    $('#addProductBtn').on('click', function () {
-        productForm[0].reset();
-        productIdInput.val('');
-        $('#productModalLabel').text('Add New Product');
-        productModal.show();
-    });
-
-    $('#saveProductBtn').on('click', function (e) {
-        e.preventDefault();
-        const id = $('#productId').val();
-        const formData = new FormData(productForm[0]);
-        const url = id ? `/products/${id}` : `{{ route('products.store') }}`;
-
-        if (id) formData.append('_method', 'PUT');
-
         $.ajax({
-            url,
+            url: url,
             method: 'POST',
             data: formData,
             contentType: false,
             processData: false,
-            success: () => {
-                showAlert(`Product ${id ? 'updated' : 'added'} successfully!`);
-                productModal.hide();
-                productForm[0].reset();
-                productIdInput.val('');
-                $('#productModalLabel').text('Add New Product');
-                productTable.ajax.reload();
+            success: function (response) {
+                $('#productModal').modal('hide');
+                table.ajax.reload();
+                Swal.fire('Success!', response.message, 'success');
             },
             error: function (xhr) {
-                if (xhr.status === 422) {
-                    let errorHtml = '';
-                    $.each(xhr.responseJSON.errors, (key, messages) => {
-                        errorHtml += `<div>${messages.join('<br>')}</div>`;
-                    });
-                    showAlert(errorHtml, 'error');
+                let errors = xhr.responseJSON?.errors;
+                if (errors) {
+                    let errorMessages = '';
+                    for (let key in errors) {
+                        errorMessages += errors[key][0] + '\n';
+                    }
+                    Swal.fire('Error!', errorMessages, 'error');
                 } else {
-                    showAlert('Unexpected error occurred.', 'error');
+                    Swal.fire('Error!', 'Something went wrong.', 'error');
                 }
             }
         });
     });
 
-    $(document).on('click', '.edit-btn', function () {
-        const id = $(this).data('id');
-        $.get(`/products/${id}`, function (product) {
-            $('#productId').val(product.id);
-            $('#productName').val(product.name);
-            $('#productCategory').val(product.subcategories_id);
-            $('#productBrand').val(product.brand_id);
-            $('#productPrice').val(product.price);
-            $('#productComparePrice').val(product.compare_price);
-            $('#productShortDescription').val(product.short_description);
-            $('#productDescription').val(product.description);
+    // Save changes to "Featured" status
+    $('#saveFeaturedProducts').click(function() {
+        const updates = [];
 
-            $('#productModalLabel').text('Edit Product');
-            productModal.show();
-        }).fail(() => showAlert('Failed to load product.', 'error'));
+        // Collect the changes for "Featured"
+        $('.featured-checkbox').each(function() {
+            const id = $(this).data('id');
+            const value = $(this).is(':checked') ? 1 : 0;
+            updates.push({ id: id, field: 'is_featured', value: value });
+        });
+
+        // Send the updates to the server
+        $.ajax({
+            url: '/admin/products/update-status',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                updates: updates
+            },
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire('Success!', 'All changes have been saved.', 'success');
+                    $('#saveFeaturedProducts').addClass('d-none');
+                } else {
+                    Swal.fire('Error!', response.message, 'error');
+                }
+            },
+            error: function() {
+                Swal.fire('Error!', 'Failed to save changes.', 'error');
+            }
+        });
     });
 
-    $(document).on('click', '.delete-btn', function () {
-        const productId = $(this).data('id');
-        const productName = $(this).data('name');
+    // Edit product
+    $(document).on('click', '.editBtn', function () {
+        let id = $(this).data('id');
+        $.get('/admin/products/' + id + '/edit', function (data) {
+            if(data.success) {
+                resetForm();
+                $('#productModal').modal('show');
+                $('#productId').val(data.data.id);
+                $('#name').val(data.data.name);
+                $('#slug').val(data.data.slug);
+                $('select[name="brand_id"]').val(data.data.brand_id);
+                $('select[name="subcategory_id"]').val(data.data.subcategory_id);
+                $('#price').val(data.data.price);
+                $('#description').val(data.data.description);
+                $('#is_featured').prop('checked', data.data.is_featured);
+                if (data.data.main_image) {
+                    $('#mainImagePreview').attr('src', '/storage/' + data.data.main_image).show();
+                }
+            }
+        });
+    });
 
+    // Delete product
+    $(document).on('click', '.deleteBtn', function () {
+        let id = $(this).data('id');
         Swal.fire({
-            title: `Delete "${productName}"?`,
-            text: "This action cannot be undone!",
+            title: 'Are you sure?',
+            text: 'This will permanently delete the product.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
             confirmButtonText: 'Yes, delete it!'
-        }).then(result => {
+        }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: `/products/${productId}`,
-                    method: 'POST',
-                    data: {
-                        _method: 'DELETE',
-                        _token: '{{ csrf_token() }}'
+                    url: '/admin/products/' + id,
+                    method: 'DELETE',
+                    data: { 
+                        _token: '{{ csrf_token() }}' 
                     },
-                    success: () => {
-                        showAlert('Product deleted successfully!');
-                        productTable.ajax.reload();
+                    success: function (response) {
+                        table.ajax.reload();
+                        Swal.fire('Deleted!', response.message, 'success');
                     },
-                    error: () => showAlert('Failed to delete product.', 'error')
+                    error: function () {
+                        Swal.fire('Error!', 'Something went wrong.', 'error');
+                    }
                 });
             }
         });
     });
 
-    $(document).on('click', '.file-preview', function () {
-        $('#previewImage').attr('src', $(this).data('src'));
-        new bootstrap.Modal($('#filePreviewModal')).show();
+    // Bulk delete products
+    $('#bulkDeleteBtn').on('click', function () {
+        let ids = [];
+        $('.bulk-check:checked').each(function () {
+            ids.push($(this).val());
+        });
+
+        if (ids.length === 0) {
+            Swal.fire('No selection', 'Please select at least one record.', 'info');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: 'This will permanently delete selected products.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete them!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/admin/products/bulk-delete',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        ids: ids
+                    },
+                    success: function (response) {
+                        table.ajax.reload();
+                        Swal.fire('Deleted!', response.message, 'success');
+                    },
+                    error: function () {
+                        Swal.fire('Error!', 'Something went wrong.', 'error');
+                    }
+                });
+            }
+        });
     });
 
-    function showAlert(message, type = 'success') {
-        Swal.fire({
-            icon: type,
-            title: type.charAt(0).toUpperCase() + type.slice(1),
-            html: message,
-            timer: 3000,
-            timerProgressBar: true,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-        });
+    // Reset form to default state
+    function resetForm() {
+        $('#productForm')[0].reset();
+        $('#productId').val('');
+        $('#mainImagePreview').hide();
+        $('#saveFeaturedProducts').addClass('d-none');
     }
 });
 </script>

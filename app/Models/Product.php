@@ -1,46 +1,39 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Scout\Searchable;
 
 class Product extends Model
 {
     protected $fillable = [
-        'name',
-        'slug',
-        'category_id',
-        'brand_id',
-        'price',
-        'compare_price',
-        'stock',
-        'short_description',
-        'description',
-        'image',
+        'name', 'slug', 'brand_id', 'subcategory_id', 'price',
+        'compare_price',  // Add this line
+        'main_image', 'description', 'is_featured', 'is_trending'
     ];
-
-    use Searchable;
-
-    public function toSearchableArray()
-    {
-        return [
-            'name' => $this->name,
-            'price' => $this->price,
-        ];
-    }
-
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
-    }
 
     public function brand()
     {
         return $this->belongsTo(Brand::class);
     }
 
-    public function reviews()
+    public function subcategory()
     {
-        return $this->hasMany(Review::class);
+        return $this->belongsTo(Subcategory::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class);
+    }
+
+    public function stocks()
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    public function current_stock()
+    {
+        return $this->stocks()->sum('quantity');
     }
 }

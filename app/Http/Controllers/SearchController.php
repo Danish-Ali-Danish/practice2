@@ -5,57 +5,63 @@ namespace App\Http\Controllers;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Subcategory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class SearchController extends Controller
 {
     public function categories()
     {
-        return response()->json(Category::select('name', 'slug')->get());
+        return response()->json(Category::select('id', 'name')->get());
     }
 
     public function suggestions(Request $request)
     {
         $query = $request->q;
-        $cat = $request->category ?? 'all';
 
-        $categories = Category::where('name', 'LIKE', "$query%")->limit(3)->get();
-        $brands = Brand::where('name', 'LIKE', "$query%")->limit(3)->get();
-        $results = [];
-
-        $products = Product::where('name', 'LIKE', "$query%")
-            ->orWhere('name', 'LIKE', "% $query%")
-            ->orWhere('short_description', 'LIKE', "%$query%")
+        $products = Product::where('name', 'like', "%$query%")
+            ->orWhere('description', 'like', "%$query%")
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'type' => 'Product',
+                    'name' => $p->name,
+                    'description' => \Str::limit($p->description, 60),
+                    'image' => $p->main_image ? asset('storage/' . $p->main_image) : asset('images/no-image.png'),
+                    'url' => route('product.show', $p->id),  // adjust if you use slug
+                ];
+            });
 
-        foreach ($products as $product) {
-            $results[] = [
-                'name' => $product->name,
-                'description' => \Str::limit($product->short_description, 50),
-                'image' => asset('uploads/products/' . $product->image),
-                'url' => url('/product/' . $product->id),
-                'type' => 'Product',
-            ];
-        }
+        $categories = Category::where('name', 'like', "%$query%")
+            ->limit(3)
+            ->get()
+            ->map(fn($c) => [
+                'type' => 'Category',
+                'name' => $c->name,
+                'url' => route('category.products', $c->id),
+            ]);
 
-        foreach ($categories as $item) {
-            $results[] = [
-                'name' => $item->name,
-                'url' => url('/cate/' . $item->slug),
-                'type' => 'Category'
-            ];
-        }
+        $subcategories = Subcategory::where('name', 'like', "%$query%")
+            ->limit(3)
+            ->get()
+            ->map(fn($s) => [
+                'type' => 'Subcategory',
+                'name' => $s->name,
+                'url' => route('subcategory.products', $s->id),
+            ]);
 
-        foreach ($brands as $item) {
-            $results[] = [
-                'name' => $item->name,
-                'url' => url('/all-brands/' . $item->slug),
-                'type' => 'Brand'
-            ];
-        }
+        $brands = Brand::where('name', 'like', "%$query%")
+            ->limit(3)
+            ->get()
+            ->map(fn($b) => [
+                'type' => 'Brand',
+                'name' => $b->name,
+                'url' => route('brand.products', $b->id),
+            ]);
 
-        return response()->json($results);
+        return response()->json(
+            $products->merge($categories)->merge($subcategories)->merge($brands)->values()
+        );
     }
 }

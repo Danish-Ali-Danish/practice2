@@ -1,15 +1,20 @@
 
-<!-- Features Section -->
-<section class="py-5 bg-light">
-    <div class="container">
-        <div class="row text-center">
-            @foreach($features as $feature)
-                <div class="col-md-3 col-6 mb-4">
-                    <i class="{{ $feature['icon'] }} fa-2x text-primary mb-2"></i>
-                    <h6 class="fw-bold">{{ $feature['title'] }}</h6>
-                    <p class="text-muted small">{{ $feature['description'] }}</p>
+<div class="features-grid row g-3">
+                @foreach($features as $feature)
+                    <div class="col-6">
+                        <div class="feature-card p-3 rounded-3 h-100 bg-white bg-opacity-10 text-white">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-wrapper  bg-opacity-20 rounded-circle p-3 me-3">
+                                    <i class="{{ $feature['icon'] }} fs-4"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 fw-bold">{{ $feature['title'] }}</h6>
+                                    <small class="opacity-75">{{ $feature['description'] }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
                 </div>
-            @endforeach
-        </div>
-    </div>
-</section>
+            </div>
+            

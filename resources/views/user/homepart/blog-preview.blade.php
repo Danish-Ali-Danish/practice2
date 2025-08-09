@@ -7,9 +7,9 @@
         <div class="row g-4">
             @foreach($blogPosts as $post)
                 <div class="col-md-4">
-                    <div class="blog-card h-100 shadow-sm border-0">
+                    <div class="blog-card h-100 shadow border-0">
                         @if($post->image)
-                            <img src="{{ asset('storage/' . $post->image) }}" class="card-img-top " alt="{{ $post->title }} "
+                            <img src="{{ asset('storage/' . $post->image) }}" class="card-img-top  img-preview" alt="{{ $post->title }} "
                                 style="height: 200px; object-fit: cover;" loading="lazy">
                         @endif
                         <div class="card-body">
@@ -25,3 +25,22 @@
     </div>
 </section>
 @endif
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark">
+      <div class="modal-body p-0 text-center">
+        <img id="previewModalImg" src="" alt="Preview" class="img-fluid rounded" />
+      </div>
+    </div>
+  </div>
+</div>
+@push(section: 'scripts')
+<script>
+    $(document).on('click', '.img-preview', function () {
+        const imgSrc = $(this).attr('src');
+        $('#previewModalImg').attr('src', imgSrc);
+        $('#imagePreviewModal').modal('show');
+    });
+</script>
+@endpush

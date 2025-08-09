@@ -10,11 +10,11 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             FeatureSeeder::class,
-            CategorySeeder::class,
-            SubCategorySeeder::class,
-            BrandSeeder::class,
-            ProductSeeder::class,
+            // CategorySeeder::class,
+            // SubCategorySeeder::class,
+            // BrandSeeder::class,
+            // ProductSeeder::class,
         ]);
-        $this->call(TimeDealSeeder::class);
+        // $this->call(TimeDealSeeder::class);
     }
 }

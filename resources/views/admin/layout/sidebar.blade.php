@@ -43,6 +43,13 @@
                 </a>
             </li>
 
+            <li>
+                <a href="{{ route('admin.hero-slides.index') }}" class="flex items-center px-4 py-2 hover:bg-gray-100">
+                    Home Slider
+                </a>
+            </li>
+
+
             <!-- Promo Management -->
             <li class="{{ request()->routeIs('promos.index') ? 'active' : '' }}">
                 <a href="{{ route('promos.index') }}">

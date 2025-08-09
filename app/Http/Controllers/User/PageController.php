@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Subcategory;
 use Illuminate\Http\Request;
 
 class PageController extends Controller
@@ -17,60 +18,20 @@ class PageController extends Controller
 
     public function allProducts(Request $request)
     {
-        $query = Product::with('brand', 'category');
+        $categories = Category::all();
+        $brands = Brand::all();
+        $popularBrands = Brand::all();
+        $products = Product::paginate(12);  // Or whatever per-page you want
 
-        if ($request->has('category')) {
-            $query->whereIn('category_id', $request->category);
-        }
+        $brandMessage = null;  // Or logic to set this
 
-        if ($request->has('brand')) {
-            $query->whereIn('brand_id', $request->brand);
-        }
-
-        if ($request->has('filter') && $request->filter === 'featured') {
-            $query->where('is_featured', true);
-        }
-
-        $products = $query->paginate(20);
-
-        $popularBrands = Brand::withCount('products')
-            ->has('products')
-            ->orderByDesc('products_count')
-            ->take(6)
-            ->get();
-
-        $categories = Category::withCount('products')->get();
-
-        // Filter brands that have products in selected categories
-        if ($request->has('category')) {
-            $brands = Brand::whereHas('products', function ($q) use ($request) {
-                $q->whereIn('category_id', $request->category);
-            })->get();
-            $brandMessage = null;
-        } else {
-            // Fallback popular brands if no category selected
-            $brands = Brand::has('products')->inRandomOrder()->take(10)->get();
-            $brandMessage = 'Showing popular brands. Select a category to filter more brands.';
-        }
-
-        // If AJAX call is for brand filters only (no full reload)
-        if ($request->ajax() && $request->has('brand_only')) {
-            return view('user.includes.partial-brand-filter', compact('brands', 'brandMessage'))->render();
-        }
-
-        return view('user.allproducts', compact(
-            'products',
-            'categories',
-            'brands',
-            'brandMessage',
-            'popularBrands'
-        ));
+        return view('user.allproducts', compact('categories', 'brands', 'popularBrands', 'products', 'brandMessage'));
     }
 
     public function productDetails($id)
     {
         $product = Product::with('reviews')->findOrFail($id);
-        $categories = Category::withCount('products')->get();
+        $categories = Subcategory::withCount('products')->get();
         $Products = Product::latest()->take(5)->get();
 
         $relatedProducts = Product::where('category_id', $product->category_id)

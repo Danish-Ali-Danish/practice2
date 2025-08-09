@@ -4,8 +4,6 @@
 <div class="container dashboard-card">
     <h2>Categories List</h2>
 
-    <div id="alertContainer"></div>
-
     <div class="d-flex justify-content-end mb-3">
         <button class="btn btn-primary" id="addCategoryBtn">
             <i class="fas fa-plus-circle me-1"></i> Add Category
@@ -26,8 +24,37 @@
     </div>
 </div>
 
-@include('admin.categories.edit')
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categoryModalLabel">Add New Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm" enctype="multipart/form-data">
+                    <input type="hidden" id="categoryId">
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryFile" class="form-label">Image</label>
+                        <input type="file" class="form-control" id="categoryFile" name="file">
+                        <div class="mt-2" id="existingImageContainer"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveCategoryBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- File Preview Modal -->
 <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -44,6 +71,9 @@
 @endsection
 
 @section('scripts')
+<!-- CSRF Token -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -54,6 +84,12 @@
 
 <script>
 $(document).ready(function () {
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+
     const categoryModal = new bootstrap.Modal($('#categoryModal')[0]);
     const categoryForm = $('#categoryForm');
     const categoryIdInput = $('#categoryId');
@@ -61,11 +97,12 @@ $(document).ready(function () {
     const categoryModalLabel = $('#categoryModalLabel');
     const addCategoryBtn = $('#addCategoryBtn');
     const saveCategoryBtn = $('#saveCategoryBtn');
+    const categoryFileInput = $('#categoryFile');
+    const existingImageContainer = $('#existingImageContainer');
 
     const categoryTable = $('#categoryTable').DataTable({
         processing: true,
         serverSide: true,
-        responsive: true,
         ajax: '{{ route("categories.index") }}',
         columns: [
             { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
@@ -92,12 +129,13 @@ $(document).ready(function () {
         categoryIdInput.val('');
         categoryForm[0].reset();
         categoryModalLabel.text('Add New Category');
+        existingImageContainer.html('');
     }
 
     saveCategoryBtn.on('click', function () {
         const id = categoryIdInput.val();
         const name = categoryNameInput.val().trim();
-        const file = $('#categoryFile')[0].files[0];
+        const file = categoryFileInput[0].files[0];
 
         if (!name) {
             showAlert('Category name is required.', 'warning');
@@ -107,10 +145,9 @@ $(document).ready(function () {
         const formData = new FormData();
         formData.append('name', name);
         if (file) formData.append('file', file);
-        formData.append('_token', '{{ csrf_token() }}');
         if (id) formData.append('_method', 'PUT');
 
-        const url = id ? `/categories/${id}` : '{{ route("categories.store") }}';
+        const url = id ? `/admin/categories/${id}` : '{{ route("categories.store") }}';
 
         $.ajax({
             url,
@@ -119,14 +156,14 @@ $(document).ready(function () {
             processData: false,
             contentType: false,
             success: function () {
-                showAlert('Category ' + (id ? 'updated' : 'added') + ' successfully!', 'success');
+                showAlert('Category ' + (id ? 'updated' : 'added') + ' successfully!');
                 categoryModal.hide();
                 clearForm();
                 categoryTable.ajax.reload();
             },
             error: function (xhr) {
                 const errorMessage = xhr.responseJSON?.errors?.name?.[0] || xhr.responseJSON?.message || xhr.statusText;
-                showAlert('Error saving category: ' + errorMessage, 'error');
+                showAlert('Error: ' + errorMessage, 'error');
             }
         });
     });
@@ -134,12 +171,18 @@ $(document).ready(function () {
     $(document).on('click', '.edit-btn', function () {
         const id = $(this).data('id');
         $.ajax({
-            url: `/categories/${id}`,
+            url: `/admin/categories/${id}`,
             method: 'GET',
             success: function (category) {
                 categoryIdInput.val(category.id);
                 categoryNameInput.val(category.name);
                 categoryModalLabel.text('Edit Category');
+                existingImageContainer.html('');
+                if (category.file_path) {
+                    existingImageContainer.html(`
+                        <img src="/storage/${category.file_path}" width="100" class="mt-2 border">
+                    `);
+                }
                 categoryModal.show();
             },
             error: function () {
@@ -163,14 +206,14 @@ $(document).ready(function () {
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: `/categories/${id}`,
+                    url: `/admin/categories/${id}`,
                     method: 'POST',
                     data: {
                         _method: 'DELETE',
                         _token: '{{ csrf_token() }}'
                     },
                     success: function () {
-                        showAlert('Category deleted successfully!', 'success');
+                        showAlert('Category deleted successfully!');
                         categoryTable.ajax.reload();
                     },
                     error: function (xhr) {
@@ -190,7 +233,6 @@ $(document).ready(function () {
 
     addCategoryBtn.on('click', function () {
         clearForm();
-        categoryModalLabel.text('Add New Category');
         categoryModal.show();
     });
 });

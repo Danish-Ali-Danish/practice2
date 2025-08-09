@@ -2,229 +2,224 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Brand, Category, Product};
+use App\Models\Brand;
+use App\Models\Product;
+use App\Models\Subcategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use Yajra\DataTables\DataTables;
+use Yajra\DataTables\Facades\DataTables;
 
 class ProductController extends Controller
 {
-    public function index(Request $request)
+    public function index()
+    {
+        $brands = Brand::all();
+        $subcategories = Subcategory::with('category')->get();
+        return view('admin.products.index', compact('brands', 'subcategories'));
+    }
+
+    public function list(Request $request)
     {
         if ($request->ajax()) {
-            $products = Product::with(['category', 'brand'])
-                ->where('is_featured', false)  // ⛔️ exclude featured
-                ->latest();
+            try {
+                $products = Product::with(['brand', 'subcategory.category'])
+                    ->select('products.*');
 
-            return DataTables::of($products)
-                ->addIndexColumn()
-                ->addColumn('category.name', fn($row) => $row->category->name ?? '—')
-                ->addColumn('brand.name', fn($row) => $row->brand->name ?? '—')
-                ->addColumn('image', fn($row) => $row->image)
-                ->addColumn('action', function ($row) {
-                    return '
-                        <button class="btn btn-sm btn-info edit-btn" data-id="' . $row->id . '">
-                            <i class="fas fa-edit"></i>Edit
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-btn" data-id="' . $row->id . '" data-name="' . $row->name . '">
-                            <i class="fas fa-trash-alt"></i>Delete
-                        </button>
-                    ';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
+                return DataTables::of($products)
+                    ->addIndexColumn()
+                    ->addColumn('checkbox', fn($product) => '<input type="checkbox" class="rowCheckbox" value="' . $product->id . '">')
+                    ->addColumn('brand', fn($product) => $product->brand?->name ?? '-')
+                    ->addColumn('category', fn($product) => $product->subcategory?->category?->name ?? '-')
+                    ->addColumn('subcategory', fn($product) => $product->subcategory?->name ?? '-')
+                    ->addColumn('image', function ($product) {
+                        if ($product->main_image) {
+                            return '<img src="' . asset('storage/' . $product->main_image) . '" width="50" height="50" style="object-fit:cover">';
+                        }
+                        return 'No Image';
+                    })
+                    ->addColumn('is_featured', fn($product) =>
+                        '<input type="checkbox" class="featured-checkbox" data-id="' . $product->id . '" '
+                        . ($product->is_featured ? 'checked' : '') . '>')
+                    ->addColumn('actions', function ($product) {
+                        return '<button class="btn btn-sm btn-primary editBtn"
+                                    data-id="' . $product->id . '"
+                                    data-name="' . e($product->name) . '"
+                                    data-slug="' . e($product->slug) . '"
+                                    data-brand="' . $product->brand_id . '"
+                                    data-sub="' . $product->subcategory_id . '"
+                                    data-price="' . $product->price . '"
+                                    data-featured="' . $product->is_featured . '"
+                                    data-desc="' . e($product->description) . '">
+                                    Edit</button>
+                            <button class="btn btn-sm btn-danger deleteBtn" data-id="' . $product->id . '">Delete</button>';
+                    })
+                    ->rawColumns(['checkbox', 'image', 'is_featured', 'actions'])
+                    ->make(true);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Failed to load data: ' . $e->getMessage()], 500);
+            }
         }
-
-        $categories = Category::all();
-        $brands = Brand::all();
-        return view('admin.products.index', compact('categories', 'brands'));
+        return response()->json(['error' => 'Invalid request'], 400);
     }
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:products,name',
-            'category_id' => 'required|exists:categories,id',
+        $request->merge([
+            'is_featured' => $request->has('is_featured'),
+            'slug' => \Str::slug($request->name)
+        ]);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:products,name,' . $request->id,
+            'slug' => 'required|string|max:255|unique:products,slug,' . $request->id,
             'brand_id' => 'required|exists:brands,id',
-            'price' => 'required|numeric',
-            'compare_price' => 'nullable|numeric',
-            'stock' => 'nullable|integer|min:0',
-            'short_description' => 'nullable|string|max:500',
+            'subcategory_id' => 'required|exists:subcategories,id',
+            'price' => 'required|numeric|min:0',
+            'compare_price' => 'nullable|numeric|gt:price',
+            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'is_featured' => 'boolean',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        if ($request->hasFile('main_image')) {
+            $validated['main_image'] = $request->file('main_image')->store('products', 'public');
         }
 
-        if ($request->compare_price && $request->compare_price <= $request->price) {
-            return response()->json([
-                'errors' => ['compare_price' => ['Compare price must be greater than actual price']]
-            ], 422);
-        }
+        $product = Product::updateOrCreate(['id' => $request->id], $validated);
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('uploads/products', 'public');
-        }
-
-        $product = Product::create([
-            'name' => $request->name,
-            'slug' => Str::slug($request->name),
-            'category_id' => $request->category_id,
-            'brand_id' => $request->brand_id,
-            'price' => $request->price,
-            'compare_price' => $request->compare_price,
-            'stock' => $request->stock,
-            'short_description' => $request->short_description,
-            'description' => $request->description,
-            'image' => $imagePath,
+        return response()->json([
+            'success' => true,
+            'message' => 'Product ' . ($request->id ? 'updated' : 'created') . ' successfully'
         ]);
-
-        $product->load(['category', 'brand']);
-        $product->price = (float) $product->price;
-
-        return response()->json(['message' => 'Product added successfully!', 'product' => $product]);
     }
 
-    public function show($id)
-    {
-        $product = Product::with(['category', 'brand'])->find($id);
-
-        if (!$product) {
-            return response()->json(['message' => 'Product not found.'], 404);
-        }
-
-        $product->price = (float) $product->price;
-        return response()->json($product);
-    }
-
-    public function update(Request $request, Product $product)
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:products,name,' . $product->id,
-            'category_id' => 'required|exists:categories,id',
-            'brand_id' => 'required|exists:brands,id',
-            'price' => 'required|numeric',
-            'compare_price' => 'nullable|numeric',
-            'stock' => 'nullable|integer|min:0',
-            'short_description' => 'nullable|string|max:500',
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        if ($request->compare_price && $request->compare_price <= $request->price) {
-            return response()->json([
-                'errors' => ['compare_price' => ['Compare price must be greater than actual price']]
-            ], 422);
-        }
-
-        if ($request->hasFile('image')) {
-            if ($product->image && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $product->image = $request->file('image')->store('uploads/products', 'public');
-        }
-
-        $product->update([
-            'name' => $request->name,
-            'slug' => Str::slug($request->name),
-            'category_id' => $request->category_id,
-            'brand_id' => $request->brand_id,
-            'price' => $request->price,
-            'compare_price' => $request->compare_price,
-            'stock' => $request->stock,
-            'short_description' => $request->short_description,
-            'description' => $request->description,
-        ]);
-
-        $product->load(['category', 'brand']);
-        $product->price = (float) $product->price;
-
-        return response()->json(['message' => 'Product updated successfully!', 'product' => $product]);
-    }
-
-    public function destroy(Product $product)
+    public function destroy($id)
     {
         try {
-            if ($product->image && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
+            $product = Product::findOrFail($id);
+            if ($product->main_image) {
+                Storage::disk('public')->delete($product->main_image);
             }
-
             $product->delete();
 
-            return response()->json(['message' => 'Product deleted successfully!']);
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'message' => 'Cannot delete product. It is associated with other records.'
-            ], 409);
+            return response()->json(['success' => true, 'message' => 'Product deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error deleting product: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getProductsBySubcategory($subcategoryId)
+    {
+        $products = Product::with(['brand', 'subcategory.category'])
+            ->where('subcategory_id', $subcategoryId)
+            ->get();
+
+        return response()->json([
+            'products' => $products,
+            'brands' => $products->pluck('brand')->unique()->values()
+        ]);
+    }
+
+    public function getFeaturedProducts()
+    {
+        $products = Product::with(['brand', 'subcategory.category'])
+            ->where('is_featured', true)
+            ->limit(8)
+            ->get();
+
+        return response()->json($products);
+    }
+
+    public function updateStatus(Request $request)
+    {
+        $request->validate([
+            'updates' => 'required|array',
+            'updates.*.id' => 'required|exists:products,id',
+            'updates.*.field' => 'required|in:is_featured',
+            'updates.*.value' => 'required|in:0,1',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($request->updates as $update) {
+                $product = Product::findOrFail($update['id']);
+                $product->{$update['field']} = $update['value'];
+                $product->save();
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'All changes have been saved']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to update statuses: ' . $e->getMessage()], 500);
         }
     }
 
     public function bulkDelete(Request $request)
     {
-        $ids = $request->input('ids');
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:products,id'
+        ]);
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['message' => 'No products selected.'], 400);
-        }
+        DB::beginTransaction();
 
-        $products = Product::whereIn('id', $ids)->get();
-
-        foreach ($products as $product) {
-            if ($product->image && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
+        try {
+            $products = Product::whereIn('id', $validated['ids'])->get();
+            foreach ($products as $product) {
+                if ($product->main_image) {
+                    Storage::disk('public')->delete($product->main_image);
+                }
+                $product->delete();
             }
-            $product->delete();
-        }
 
-        return response()->json(['message' => 'Selected products deleted successfully.']);
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Selected products deleted successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Error deleting products: ' . $e->getMessage()], 500);
+        }
     }
 
-    // ✅ Save Featured (additive only)
-
-    public function saveFeatured(Request $request)
+    public function addStock(Request $request)
     {
-        $ids = $request->input('featured_ids');
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'stock' => 'required|integer|min:1'
+        ]);
 
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['message' => 'No products selected.'], 400);
-        }
+        $product = Product::findOrFail($validated['product_id']);
+        $product->increment('stock', $validated['stock']);
 
-        Product::whereIn('id', $ids)->update(['is_featured' => true]);
-
-        return response()->json(['message' => 'Selected products featured successfully.']);
+        return response()->json(['success' => true, 'message' => 'Stock added successfully']);
     }
 
-    // ✅ Unfeature (remove manually)
-    public function unfeature(Request $request)
+    public function edit($id)
     {
-        $product = Product::find($request->id);
-
-        if (!$product) {
-            return response()->json(['message' => 'Product not found.'], 404);
-        }
-
-        $product->is_featured = false;
-        $product->save();
-
-        return response()->json(['message' => 'Product removed from featured list.']);
+        $product = Product::findOrFail($id);
+        return response()->json(['success' => true, 'data' => $product]);
     }
 
-    public function featuredProducts()
+    public function featured()
     {
-        $products = Product::with(['category', 'brand'])
-            ->where('is_featured', true)  // ✅ only featured
-            ->latest()
-            ->get();
+        // Fetch all featured products
+        $featuredProducts = Product::where('is_featured', true)->with(['brand', 'subcategory'])->get();
 
-        return view('admin.products.featured', compact('products'));
+        return view('admin.products.featured', compact('featuredProducts'));
+    }
+
+    public function subcategoryProducts($id)
+    {
+        $subcategory = Subcategory::with(['products.brand', 'category'])->findOrFail($id);
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'subcategory' => $subcategory,
+                'products' => $subcategory->products,
+                'brands' => $subcategory->products->pluck('brand')->unique()
+            ]);
+        }
     }
 }
